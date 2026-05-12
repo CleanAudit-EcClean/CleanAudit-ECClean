@@ -1,8 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-* { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
-body { font-family: Arial, Helvetica, sans-serif; background: #f8fafc; }
-button, input, select, textarea { font: inherit; }
+{
+  "name": "CleanAudit",
+  "short_name": "CleanAudit",
+  "description": "Facility hygiene audits and corrective actions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "icons": []
+}

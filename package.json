@@ -1,13 +1,16 @@
 import './globals.css';
-import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'CleanAudit',
-  description: 'Facility-specific hygiene audits with corrective actions',
-  manifest: '/manifest.json',
+  description: 'Facility hygiene audits, corrective actions and reports',
+  manifest: '/manifest.json'
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const viewport = {
+  themeColor: '#059669'
+};
+
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>{children}</body>
