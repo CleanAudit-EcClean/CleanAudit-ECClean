@@ -1,0 +1,355 @@
+"use client";
+
+import React, { useMemo, useState } from "react";
+
+const facilityTemplates = {
+  education: {
+    id: "education",
+    label: "Education / Campus",
+    sites: ["Main Campus", "Library", "Student Housing", "Administration", "Sports Facility"],
+    areas: ["Public Washrooms", "Classrooms", "Library", "Kitchens / Tea Areas", "Common Areas", "Cleaning Store"],
+    sections: [
+      {
+        id: "washrooms",
+        name: "Washrooms & Hand Hygiene",
+        weight: 25,
+        questions: [
+          "Toilets, urinals, basins, taps, and mirrors are clean and sanitised",
+          "Soap, toilet paper, and hand-drying facilities are available",
+          "Floors are clean, dry, and free from odours",
+          "Bins and sanitary units are clean, closed, and not overflowing",
+          "Cleaning schedule is visible, current, and signed off",
+        ],
+      },
+      {
+        id: "learning_spaces",
+        name: "Learning & Shared Spaces",
+        weight: 15,
+        questions: [
+          "Desks, counters, and frequently used surfaces are clean",
+          "Waste bins are available and not overflowing",
+          "Floors are swept, mopped, or vacuumed to standard",
+          "No visible spills, stains, pest activity, or hygiene risks",
+        ],
+      },
+      {
+        id: "high_touch",
+        name: "High-touch Points",
+        weight: 15,
+        questions: [
+          "Door handles, push plates, and handrails are clean",
+          "Light switches, counters, and shared equipment touchpoints are clean",
+          "Lift buttons, access keypads, and reception counters are clean where applicable",
+        ],
+      },
+      {
+        id: "food_areas",
+        name: "Food / Tea Areas",
+        weight: 15,
+        questions: [
+          "Food-contact and preparation surfaces are clean and sanitised",
+          "Sinks, taps, counters, and appliances are visibly clean",
+          "Waste bins are lined, closed where required, and not overflowing",
+          "No visible pest activity or food residue buildup",
+        ],
+      },
+      {
+        id: "chemical_control",
+        name: "Cleaning Store & Chemical Control",
+        weight: 15,
+        questions: [
+          "Chemicals are correctly labelled and safely stored",
+          "Dilution bottles are labelled and in good condition",
+          "Cleaning tools are stored hygienically and separated where required",
+          "No leaking, unlabelled, or damaged chemical containers are present",
+        ],
+      },
+      {
+        id: "waste",
+        name: "Waste Management",
+        weight: 15,
+        questions: [
+          "Waste bins are emptied regularly and kept clean",
+          "External bin areas are clean and free from odours",
+          "Waste segregation requirements are followed where applicable",
+        ],
+      },
+    ],
+  },
+  healthcare: {
+    id: "healthcare",
+    label: "Healthcare / Clinic",
+    sites: ["Reception", "Consulting Rooms", "Treatment Rooms", "Waiting Area", "Ablutions"],
+    areas: ["Reception", "Waiting Area", "Treatment Room", "Consulting Room", "Washrooms", "Waste Holding Area"],
+    sections: [
+      { id: "clinical_surfaces", name: "Clinical Surface Hygiene", weight: 25, questions: ["Patient-contact surfaces are cleaned and disinfected between use", "Treatment beds, chairs, and counters are visibly clean", "No blood, bodily fluid, or contamination risk is visible", "Approved disinfectant is available and correctly used"] },
+      { id: "hand_hygiene", name: "Hand Hygiene Facilities", weight: 20, questions: ["Hand soap or sanitiser is available at required points", "Hand-drying facilities are available and stocked", "Basins, taps, dispensers, and splashbacks are clean", "Hand hygiene signage is visible where required"] },
+      { id: "medical_waste", name: "Healthcare Waste Handling", weight: 20, questions: ["Waste containers are available, clean, and not overflowing", "Sharps or clinical waste containers are safely stored where applicable", "Waste holding areas are clean, secured, and odour-free"] },
+      { id: "washrooms", name: "Washrooms", weight: 15, questions: ["Toilets, basins, and floors are clean and sanitised", "Soap, toilet paper, and hand-drying supplies are available", "Bins are clean and not overflowing"] },
+      { id: "chemical_control", name: "Chemical Control", weight: 10, questions: ["Chemicals are labelled, stored, and diluted correctly", "Cleaning equipment is clean and stored hygienically"] },
+      { id: "public_areas", name: "Reception & Waiting Areas", weight: 10, questions: ["Seating, counters, doors, and touchpoints are clean", "Floors are clean and waste bins are not overflowing"] },
+    ],
+  },
+  food: {
+    id: "food",
+    label: "Food Service / Canteen",
+    sites: ["Kitchen", "Serving Area", "Dining Area", "Dry Store", "Scullery"],
+    areas: ["Kitchen", "Food Prep Area", "Scullery", "Serving Counter", "Dining Area", "Dry Store"],
+    sections: [
+      { id: "food_contact", name: "Food-contact Surfaces", weight: 25, questions: ["Food preparation surfaces are clean and sanitised", "Cutting boards, utensils, and equipment are clean and stored correctly", "No visible food residue, grease buildup, or cross-contamination risk"] },
+      { id: "equipment", name: "Kitchen Equipment Hygiene", weight: 20, questions: ["Cooking equipment, fridges, and counters are clean externally", "Sinks, taps, splashbacks, and drains are clean", "Dishwashing / scullery area is clean and organised"] },
+      { id: "waste", name: "Waste & Pest Prevention", weight: 20, questions: ["Bins are lined, closed where required, and not overflowing", "No visible pest activity, droppings, or food waste buildup", "External waste area is clean and controlled"] },
+      { id: "hand_hygiene", name: "Hand Hygiene", weight: 15, questions: ["Hand soap or sanitiser is available for food handlers", "Hand-drying facilities are available and stocked", "Handwashing points are clean and accessible"] },
+      { id: "chemical_control", name: "Chemical & Cleaning Control", weight: 10, questions: ["Food-safe chemicals are labelled and stored away from food", "Dilution bottles are labelled and controlled"] },
+      { id: "dining", name: "Dining / Customer Area", weight: 10, questions: ["Tables, counters, floors, and touchpoints are clean", "Customer bins are clean and not overflowing"] },
+    ],
+  },
+  industrial: {
+    id: "industrial",
+    label: "Industrial / Factory / Warehouse",
+    sites: ["Production Floor", "Warehouse", "Offices", "Staff Ablutions", "Dispatch Area"],
+    areas: ["Production Area", "Warehouse", "Staff Ablutions", "Change Room", "Loading Bay", "Chemical Store"],
+    sections: [
+      { id: "floor_safety", name: "Floor Hygiene & Safety", weight: 20, questions: ["Floors are clean, dry, and free from slip hazards", "Spills, dust, residues, and debris are controlled", "Walkways and emergency routes are clear"] },
+      { id: "staff_facilities", name: "Staff Facilities", weight: 20, questions: ["Ablutions are clean, stocked, and odour-free", "Change rooms and lockers are clean and orderly where applicable", "Soap, toilet paper, and hand-drying supplies are available"] },
+      { id: "waste", name: "Waste & Housekeeping", weight: 20, questions: ["Waste is removed regularly and bins are not overflowing", "Waste segregation is followed where required", "External waste and loading areas are clean"] },
+      { id: "equipment", name: "Equipment & Cleaning Tools", weight: 15, questions: ["Cleaning tools and machines are clean and stored correctly", "Equipment is not creating hygiene or contamination risks", "Mops, buckets, and cloths are clean and colour-coded where required"] },
+      { id: "chemical_control", name: "Chemical Control", weight: 15, questions: ["Chemicals are labelled, stored, and controlled safely", "Dilution bottles are labelled and in good condition", "No unlabelled or leaking chemical containers are present"] },
+      { id: "touchpoints", name: "Offices & High-touch Areas", weight: 10, questions: ["Office surfaces, handles, switches, and shared touchpoints are clean", "Kitchenette / tea areas are clean where applicable"] },
+    ],
+  },
+  commercial: {
+    id: "commercial",
+    label: "Commercial Office / Retail",
+    sites: ["Reception", "Offices", "Boardrooms", "Customer Areas", "Staff Facilities"],
+    areas: ["Reception", "Offices", "Boardroom", "Public Washrooms", "Staff Kitchen", "Store Room"],
+    sections: [
+      { id: "public_areas", name: "Public & Customer Areas", weight: 20, questions: ["Reception, counters, and public surfaces are clean", "Floors are clean, dry, and free from visible dirt", "Customer bins are available and not overflowing"] },
+      { id: "washrooms", name: "Washrooms", weight: 25, questions: ["Toilets, basins, taps, mirrors, and floors are clean", "Soap, toilet paper, and hand-drying supplies are stocked", "Bins and sanitary units are clean and not overflowing", "No odours, stains, or hygiene complaints are visible"] },
+      { id: "touchpoints", name: "High-touch Points", weight: 20, questions: ["Door handles, counters, switches, and shared equipment are clean", "Handrails, access points, and customer-facing touchpoints are clean"] },
+      { id: "staff_areas", name: "Staff Areas", weight: 15, questions: ["Kitchen / tea areas are clean and bins are not overflowing", "Staff areas are tidy, odour-free, and hygienic"] },
+      { id: "stock", name: "Hygiene Consumables", weight: 10, questions: ["Consumable stock levels are adequate", "Dispensers are clean and operational"] },
+      { id: "chemical_control", name: "Cleaning Store", weight: 10, questions: ["Chemicals are labelled and stored correctly", "Cleaning tools are clean and stored hygienically"] },
+    ],
+  },
+};
+
+const initialActions = [
+  { id: 1, title: "Refill empty soap dispenser in public washroom", site: "Public Washrooms", severity: "Critical", status: "Open", due: "Today", owner: "Team Leader" },
+  { id: 2, title: "Resolve odour issue in staff ablution area", site: "Staff Facilities", severity: "Major", status: "In progress", due: "Tomorrow", owner: "Operations Manager" },
+  { id: 3, title: "Relabel chemical dilution bottle in cleaning store", site: "Cleaning Store", severity: "Minor", status: "Verified", due: "Closed", owner: "Supervisor" },
+];
+
+const navItems = [
+  { id: "dashboard", icon: "📊", label: "Dashboard" },
+  { id: "setup", icon: "🏢", label: "Facility Setup" },
+  { id: "audit", icon: "✅", label: "Run Audit" },
+  { id: "customise", icon: "+", label: "Areas & Questions" },
+  { id: "actions", icon: "⚠️", label: "Corrective Actions" },
+  { id: "reports", icon: "📄", label: "Reports" },
+  { id: "phase1", icon: "🛡️", label: "Phase 1 Status" },
+];
+
+type User = { name: string; email: string; role: string };
+
+type Section = { id: string; name: string; weight: number; questions: string[]; custom?: boolean };
+
+function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return <div className={`rounded-3xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</div>;
+}
+
+function Button({ children, onClick, variant = "solid", className = "", type = "button", disabled = false }: { children: React.ReactNode; onClick?: () => void; variant?: "solid" | "outline"; className?: string; type?: "button" | "submit"; disabled?: boolean }) {
+  const base = "inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  const styles = variant === "outline" ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-emerald-600 text-white hover:bg-emerald-700";
+  return <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${styles} ${className}`}>{children}</button>;
+}
+
+function scoreLabel(score: number) {
+  if (score >= 90) return { label: "Excellent", tone: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+  if (score >= 80) return { label: "Acceptable", tone: "bg-lime-100 text-lime-700 border-lime-200" };
+  if (score >= 70) return { label: "Needs improvement", tone: "bg-amber-100 text-amber-700 border-amber-200" };
+  if (score >= 60) return { label: "Poor", tone: "bg-orange-100 text-orange-700 border-orange-200" };
+  return { label: "Critical", tone: "bg-red-100 text-red-700 border-red-200" };
+}
+
+function cx(...items: Array<string | false | null | undefined>) { return items.filter(Boolean).join(" "); }
+function normaliseText(text: string) { return text.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || `item_${Date.now()}`; }
+
+function calculateWeightedScore(sections: Section[], answers: Record<string, number | string>) {
+  let totalWeighted = 0;
+  let maxWeight = 0;
+  sections.forEach((section) => {
+    let sectionTotal = 0;
+    let sectionMax = 0;
+    section.questions.forEach((_, index) => {
+      const value = answers[`${section.id}-${index}`];
+      if (value !== "na") {
+        sectionTotal += Number(value || 0);
+        sectionMax += 3;
+      }
+    });
+    if (sectionMax > 0) {
+      totalWeighted += (sectionTotal / sectionMax) * section.weight;
+      maxWeight += section.weight;
+    }
+  });
+  if (maxWeight === 0) return 0;
+  return Math.round((totalWeighted / maxWeight) * 100);
+}
+
+function createInitialAnswers(sections: Section[]) {
+  const data: Record<string, number | string> = {};
+  sections.forEach((section) => section.questions.forEach((_, index) => {
+    data[`${section.id}-${index}`] = index === 1 && section.id.includes("wash") ? 1 : index === 0 ? 2 : 3;
+  }));
+  return data;
+}
+
+function AuthScreen({ onLogin }: { onLogin: (user: User) => void }) {
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("CleanAudit Admin");
+  const [email, setEmail] = useState("admin@cleanaudit.co.za");
+  const [password, setPassword] = useState("password123");
+  const [role, setRole] = useState("Platform Owner");
+
+  function submitAuth(event: React.FormEvent) {
+    event.preventDefault();
+    onLogin({ name: name.trim() || "CleanAudit User", email: email.trim() || "user@example.com", role });
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.1fr_.9fr]">
+        <div>
+          <div className="mb-6 inline-flex items-center gap-3 rounded-3xl bg-white/10 px-4 py-3 backdrop-blur">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500 text-xl">🛡️</span>
+            <div><h1 className="text-xl font-bold">CleanAudit</h1><p className="text-xs text-slate-300">Powered by EC Clean</p></div>
+          </div>
+          <h2 className="max-w-2xl text-4xl font-black tracking-tight md:text-6xl">Digital hygiene audits for professional facilities.</h2>
+          <p className="mt-5 max-w-xl text-lg text-slate-300">Clients sign up, select their facility type, receive the correct audit requirements, add their own areas or questions, and start tracking corrective actions.</p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">{["Facility templates", "Photo findings", "Corrective actions"].map((item) => <div key={item} className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm font-semibold text-slate-200">✓ {item}</div>)}</div>
+        </div>
+        <Card className="border-white/10 bg-white text-slate-900">
+          <div className="p-6 md:p-8">
+            <div className="mb-6"><p className="text-sm font-medium text-emerald-700">Phase 1 foundation</p><h3 className="text-3xl font-bold">{mode === "login" ? "Sign in" : "Create account"}</h3><p className="mt-1 text-sm text-slate-500">Demo admin login. Supabase Auth connects in Phase 2.</p></div>
+            <form onSubmit={submitAuth} className="space-y-4">
+              {mode === "signup" && <label className="block text-sm font-medium">Full name<input className="mt-1 w-full rounded-2xl border p-3" value={name} onChange={(event) => setName(event.target.value)} /></label>}
+              <label className="block text-sm font-medium">Email<input type="email" className="mt-1 w-full rounded-2xl border p-3" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+              <label className="block text-sm font-medium">Password<input type="password" className="mt-1 w-full rounded-2xl border p-3" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+              {mode === "signup" && <label className="block text-sm font-medium">Role<select className="mt-1 w-full rounded-2xl border bg-white p-3" value={role} onChange={(event) => setRole(event.target.value)}><option>Platform Owner</option><option>Client Admin</option><option>Manager</option><option>Auditor</option><option>Viewer</option></select></label>}
+              <Button type="submit" className="w-full">{mode === "login" ? "Enter CleanAudit as Admin" : "Create CleanAudit account"}</Button>
+            </form>
+            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Demo: use the prefilled admin details and click enter. No real account is created yet.</div>
+            <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")} className="mt-5 text-sm font-semibold text-emerald-700">{mode === "login" ? "Need an account? Sign up" : "Already have an account? Sign in"}</button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function CleanAuditApp() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [organisationName, setOrganisationName] = useState("Demo Organisation");
+  const [facilityType, setFacilityType] = useState<keyof typeof facilityTemplates>("commercial");
+  const [customAreas, setCustomAreas] = useState(["Executive Boardroom"]);
+  const [customSections, setCustomSections] = useState<Section[]>([{ id: "custom_boardroom", name: "Custom: Executive Boardroom", weight: 5, questions: ["Boardroom table, chairs, screens, and shared equipment are clean before meetings"], custom: true }]);
+  const template = useMemo(() => {
+    const base = facilityTemplates[facilityType];
+    return { ...base, sections: [...base.sections, ...customSections] };
+  }, [facilityType, customSections]);
+  const allAreas = useMemo(() => [...template.areas, ...customAreas], [template.areas, customAreas]);
+  const [selectedSite, setSelectedSite] = useState("Reception");
+  const [area, setArea] = useState("Public Washrooms");
+  const [auditor, setAuditor] = useState("Team Leader");
+  const [answers, setAnswers] = useState<Record<string, number | string>>(() => createInitialAnswers(template.sections));
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [photoFlags, setPhotoFlags] = useState<Record<string, boolean>>({});
+  const [actions, setActions] = useState(initialActions);
+  const [showReport, setShowReport] = useState(false);
+  const [newArea, setNewArea] = useState("");
+  const [newSectionName, setNewSectionName] = useState("");
+  const [newQuestion, setNewQuestion] = useState("");
+  const score = useMemo(() => calculateWeightedScore(template.sections, answers), [template.sections, answers]);
+  const rating = scoreLabel(score);
+
+  const failingItems = useMemo(() => {
+    const items: any[] = [];
+    template.sections.forEach((section) => section.questions.forEach((question, index) => {
+      const key = `${section.id}-${index}`;
+      const value = answers[key];
+      if (value !== "na" && Number(value) < 3) items.push({ key, section: section.name, question, value, note: notes[key], photo: photoFlags[key] });
+    }));
+    return items;
+  }, [template.sections, answers, notes, photoFlags]);
+
+  function handleFacilityTypeChange(nextType: keyof typeof facilityTemplates) {
+    const nextTemplate = facilityTemplates[nextType];
+    setFacilityType(nextType);
+    setSelectedSite(nextTemplate.sites[0]);
+    setArea(nextTemplate.areas[0]);
+    setAnswers(createInitialAnswers([...nextTemplate.sections, ...customSections]));
+    setNotes({});
+    setPhotoFlags({});
+  }
+
+  function addCustomArea() {
+    const trimmed = newArea.trim();
+    if (!trimmed || customAreas.includes(trimmed)) return;
+    setCustomAreas((prev) => [...prev, trimmed]);
+    setArea(trimmed);
+    setNewArea("");
+  }
+
+  function addCustomQuestion() {
+    const sectionName = newSectionName.trim() || "Custom Requirements";
+    const question = newQuestion.trim();
+    if (!question) return;
+    const sectionId = `custom_${normaliseText(sectionName)}`;
+    setCustomSections((prev) => {
+      const existing = prev.find((section) => section.id === sectionId);
+      if (existing) return prev.map((section) => section.id === sectionId ? { ...section, questions: [...section.questions, question] } : section);
+      return [...prev, { id: sectionId, name: `Custom: ${sectionName}`, weight: 5, questions: [question], custom: true }];
+    });
+    setAnswers((prev) => ({ ...prev, [`${sectionId}-0`]: 3 }));
+    setNewQuestion("");
+  }
+
+  function addActionFromFinding(finding: any) {
+    const severity = Number(finding.value) === 0 ? "Critical" : Number(finding.value) === 1 ? "Major" : "Minor";
+    setActions((prev) => [{ id: Date.now(), title: finding.question, site: area, severity, status: "Open", due: severity === "Critical" ? "Today" : "3 days", owner: "Unassigned" }, ...prev]);
+  }
+
+  if (!currentUser) return <AuthScreen onLogin={setCurrentUser} />;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="sticky top-0 z-30 border-b bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-sm">🛡️</div><div><h1 className="text-lg font-bold leading-tight">CleanAudit</h1><p className="text-xs text-slate-500">Facility-specific hygiene audits with custom areas and questions</p></div></div>
+          <div className="hidden items-center gap-3 md:flex"><div className="text-right"><p className="text-sm font-bold">{currentUser.name}</p><p className="text-xs text-slate-500">{currentUser.role}</p></div><Button variant="outline" onClick={() => setCurrentUser(null)}>Sign out</Button><Button onClick={() => setActiveTab("setup")}>+ Set Up Facility</Button></div>
+        </div>
+      </header>
+      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-5 lg:grid-cols-[250px_1fr]">
+        <aside className="lg:sticky lg:top-20 lg:h-fit"><Card><div className="p-3">{navItems.map(({ id, icon, label }) => <button key={id} onClick={() => setActiveTab(id)} className={cx("mb-1 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition", activeTab === id ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100")}><span>{icon}</span>{label}</button>)}</div></Card></aside>
+        <section className="min-w-0">
+          {activeTab === "dashboard" && <div className="space-y-4"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><p className="text-sm font-medium text-emerald-700">{organisationName} • {template.label}</p><h2 className="text-3xl font-bold tracking-tight">Hygiene performance dashboard</h2><p className="mt-1 text-slate-500">The audit template changes automatically according to the client’s facility type.</p></div><Button onClick={() => setActiveTab("audit")}>Start Audit</Button></div><Card><div className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"><div><h3 className="text-xl font-bold">Phase 1 app foundation</h3><p className="mt-1 text-sm text-slate-500">Login shell, user roles, protected dashboard, onboarding setup, and facility-template engine are in place.</p></div><span className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">Admin ready</span></div></Card><div className="grid gap-4 md:grid-cols-5">{[{ label: "Current Score", value: `${score}%`, sub: rating.label }, { label: "Open Actions", value: actions.filter((a) => a.status !== "Verified").length, sub: "Needs follow-up" }, { label: "Template Questions", value: template.sections.reduce((sum, section) => sum + section.questions.length, 0), sub: template.label }, { label: "Custom Areas", value: customAreas.length, sub: "Client-added" }, { label: "User Role", value: currentUser.role, sub: "Protected session" }].map((item) => <Card key={item.label}><div className="p-5"><p className="text-sm text-slate-500">{item.label}</p><p className="mt-2 text-2xl font-bold">{item.value}</p><p className="mt-1 text-xs text-slate-400">{item.sub}</p></div></Card>)}</div><Card><div className="p-5"><h3 className="text-xl font-bold">Facility audit requirements</h3><p className="text-sm text-slate-500">Loaded from the selected facility profile.</p><div className="mt-5 space-y-4">{template.sections.map((section) => <div key={section.id}><div className="mb-2 flex items-center justify-between text-sm"><span className="font-medium">{section.name}</span><span className="text-slate-500">{section.questions.length} questions</span></div><div className="h-3 rounded-full bg-slate-100"><div className="h-3 rounded-full bg-emerald-600" style={{ width: `${Math.max(20, Math.min(100, section.weight * 4))}%` }} /></div></div>)}</div></div></Card></div>}
+
+          {activeTab === "setup" && <div className="space-y-4"><div><p className="text-sm font-medium text-emerald-700">Client onboarding</p><h2 className="text-3xl font-bold tracking-tight">Facility setup</h2><p className="mt-1 text-slate-500">When a client signs up, CleanAudit loads audit requirements based on facility type.</p></div><Card><div className="grid gap-4 p-5 md:grid-cols-2"><label className="text-sm font-medium">Organisation / client name<input className="mt-1 w-full rounded-2xl border p-3" value={organisationName} onChange={(event) => setOrganisationName(event.target.value)} /></label><label className="text-sm font-medium">Facility type<select className="mt-1 w-full rounded-2xl border bg-white p-3" value={facilityType} onChange={(event) => handleFacilityTypeChange(event.target.value as keyof typeof facilityTemplates)}>{Object.values(facilityTemplates).map((templateOption) => <option key={templateOption.id} value={templateOption.id}>{templateOption.label}</option>)}</select></label></div></Card><div className="grid gap-4 lg:grid-cols-2"><Card><div className="p-5"><h3 className="text-xl font-bold">Loaded audit sections</h3><div className="mt-4 space-y-3">{template.sections.map((section) => <div key={section.id} className="rounded-2xl border p-4"><p className="font-semibold">{section.name}</p><p className="text-sm text-slate-500">{section.questions.length} questions • {section.custom ? "Custom" : "Template"}</p></div>)}</div></div></Card><Card><div className="p-5"><h3 className="text-xl font-bold">Available areas</h3><div className="mt-4 grid gap-2 sm:grid-cols-2">{allAreas.map((item) => <div key={item} className="rounded-2xl border p-3 text-sm font-medium">📍 {item}</div>)}</div></div></Card></div></div>}
+
+          {activeTab === "audit" && <div className="space-y-4"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><p className="text-sm font-medium text-emerald-700">New audit • {template.label}</p><h2 className="text-3xl font-bold tracking-tight">Facility hygiene audit</h2><p className="mt-1 text-slate-500">Mobile scoring with comments, photo flags, and corrective actions.</p></div><div className="rounded-3xl border bg-white px-5 py-3 text-center shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Live score</p><p className="text-3xl font-bold text-emerald-700">{score}%</p></div></div><Card><div className="grid gap-3 p-5 md:grid-cols-4"><label className="text-sm font-medium">Organisation<input className="mt-1 w-full rounded-2xl border p-3" value={organisationName} onChange={(event) => setOrganisationName(event.target.value)} /></label><label className="text-sm font-medium">Site / location<select className="mt-1 w-full rounded-2xl border bg-white p-3" value={selectedSite} onChange={(event) => setSelectedSite(event.target.value)}>{template.sites.map((site) => <option key={site}>{site}</option>)}</select></label><label className="text-sm font-medium">Area<select className="mt-1 w-full rounded-2xl border bg-white p-3" value={area} onChange={(event) => setArea(event.target.value)}>{allAreas.map((item) => <option key={item}>{item}</option>)}</select></label><label className="text-sm font-medium">Auditor<input className="mt-1 w-full rounded-2xl border p-3" value={auditor} onChange={(event) => setAuditor(event.target.value)} /></label></div></Card>{template.sections.map((section) => <Card key={section.id}><div className="p-5"><h3 className="text-xl font-bold">{section.name}</h3><p className="mb-4 text-sm text-slate-500">Weighting: {section.weight}% • {section.custom ? "Custom requirement" : "Facility template requirement"}</p><div className="space-y-4">{section.questions.map((question, index) => { const key = `${section.id}-${index}`; return <div key={key} className="rounded-3xl border bg-white p-4"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-center"><div><p className="font-semibold">{question}</p><p className="mt-1 text-xs text-slate-500">3 = compliant, 2 = minor, 1 = major, 0 = critical</p></div><div className="grid grid-cols-5 gap-2">{[3, 2, 1, 0, "na"].map((value) => <button type="button" key={value} onClick={() => setAnswers((prev) => ({ ...prev, [key]: value }))} className={cx("h-10 rounded-2xl border px-3 text-sm font-bold transition", answers[key] === value ? "border-emerald-600 bg-emerald-600 text-white" : "bg-white hover:bg-slate-50")}>{value === "na" ? "N/A" : value}</button>)}</div></div>{answers[key] !== 3 && answers[key] !== "na" && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"><input className="rounded-2xl border p-3 text-sm" placeholder="Add finding note..." value={notes[key] || ""} onChange={(event) => setNotes((prev) => ({ ...prev, [key]: event.target.value }))} /><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setPhotoFlags((prev) => ({ ...prev, [key]: !prev[key] }))}>📷 {photoFlags[key] ? "Photo added" : "Add photo"}</Button><Button onClick={() => addActionFromFinding({ key, question, value: answers[key] })}>Create action</Button></div></div>}</div>; })}</div></div></Card>)}</div>}
+
+          {activeTab === "customise" && <div className="space-y-4"><div><p className="text-sm font-medium text-emerald-700">Client profile customisation</p><h2 className="text-3xl font-bold tracking-tight">Areas & questions</h2><p className="mt-1 text-slate-500">Add missing areas and audit questions to the client profile.</p></div><div className="grid gap-4 lg:grid-cols-2"><Card><div className="p-5"><h3 className="text-xl font-bold">Add a custom area</h3><div className="mt-4 flex flex-col gap-2 sm:flex-row"><input className="w-full rounded-2xl border p-3" placeholder="Area name" value={newArea} onChange={(event) => setNewArea(event.target.value)} /><Button onClick={addCustomArea} disabled={!newArea.trim()}>Add area</Button></div><div className="mt-4 space-y-2">{customAreas.map((item) => <div key={item} className="rounded-2xl border bg-emerald-50 p-3 text-sm font-medium text-emerald-800">📍 {item}</div>)}</div></div></Card><Card><div className="p-5"><h3 className="text-xl font-bold">Add a custom audit question</h3><div className="mt-4 space-y-3"><input className="w-full rounded-2xl border p-3" placeholder="Section name" value={newSectionName} onChange={(event) => setNewSectionName(event.target.value)} /><textarea className="min-h-24 w-full rounded-2xl border p-3" placeholder="Question" value={newQuestion} onChange={(event) => setNewQuestion(event.target.value)} /><Button onClick={addCustomQuestion} disabled={!newQuestion.trim()}>Add question</Button></div></div></Card></div></div>}
+
+          {activeTab === "actions" && <div className="space-y-4"><div><p className="text-sm font-medium text-emerald-700">Action management</p><h2 className="text-3xl font-bold tracking-tight">Corrective actions</h2><p className="mt-1 text-slate-500">Assign, close, and verify hygiene findings.</p></div><div className="grid gap-3">{actions.map((action) => <Card key={action.id}><div className="flex flex-col justify-between gap-4 p-5 md:flex-row md:items-center"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className={cx("rounded-full px-3 py-1 text-xs font-bold", action.severity === "Critical" ? "bg-red-100 text-red-700" : action.severity === "Major" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600")}>{action.severity}</span><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{action.status}</span></div><h3 className="text-lg font-bold">{action.title}</h3><p className="mt-1 flex flex-wrap gap-3 text-sm text-slate-500"><span>{action.site}</span><span>Owner: {action.owner}</span><span>Due: {action.due}</span></p></div><div className="flex flex-wrap gap-2"><Button variant="outline">Upload proof</Button><Button onClick={() => setActions((prev) => prev.map((item) => item.id === action.id ? { ...item, status: "Verified" } : item))}>Verify</Button></div></div></Card>)}</div></div>}
+
+          {activeTab === "reports" && <div className="space-y-4"><div><p className="text-sm font-medium text-emerald-700">Reporting</p><h2 className="text-3xl font-bold tracking-tight">Audit reports</h2><p className="mt-1 text-slate-500">Client-ready report summaries. PDF export connects in the full build.</p></div><Card><div className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"><div><h3 className="text-xl font-bold">{organisationName} Hygiene Audit</h3><p className="mt-1 text-sm text-slate-500">{template.label} • {selectedSite} • {area} • Score {score}% • {failingItems.length} findings</p></div><Button onClick={() => setShowReport(true)}>Preview report</Button></div></Card></div>}
+
+          {activeTab === "phase1" && <div className="space-y-4"><div><p className="text-sm font-medium text-emerald-700">Build progress</p><h2 className="text-3xl font-bold tracking-tight">Phase 1 foundation status</h2><p className="mt-1 text-slate-500">Ready for deployment as a front-end prototype.</p></div><div className="grid gap-4 md:grid-cols-2"><Card><div className="p-5"><h3 className="text-xl font-bold">Completed</h3><div className="mt-4 space-y-3">{["CleanAudit standalone app shell", "Demo admin login", "Protected dashboard", "User role display", "Facility type onboarding", "Template loading engine", "Custom area and question builder", "Audit scoring engine", "Corrective action workflow mock", "Report preview mock"].map((item) => <div key={item} className="rounded-2xl border bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">✓ {item}</div>)}</div></div></Card><Card><div className="p-5"><h3 className="text-xl font-bold">Next backend connections</h3><div className="mt-4 space-y-3">{["Connect Supabase Auth", "Create PostgreSQL database tables", "Save organisations, users, sites, and areas", "Save audits and answers", "Upload evidence photos", "Generate PDF reports", "Deploy to Vercel"].map((item) => <div key={item} className="rounded-2xl border bg-white p-3 text-sm font-semibold text-slate-700">→ {item}</div>)}</div></div></Card></div></div>}
+        </section>
+      </main>
+      {showReport && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"><div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white shadow-2xl"><div className="sticky top-0 flex items-center justify-between border-b bg-white p-5"><div><h2 className="text-2xl font-bold">Audit report preview</h2><p className="text-sm text-slate-500">Client-ready hygiene audit summary</p></div><button type="button" onClick={() => setShowReport(false)} className="rounded-2xl p-2 text-2xl leading-none hover:bg-slate-100">×</button></div><div className="space-y-5 p-6"><div className="rounded-3xl bg-emerald-600 p-6 text-white"><p className="text-sm opacity-80">CleanAudit</p><h3 className="mt-2 text-3xl font-bold">{organisationName}</h3><p className="mt-1">{template.label} • {selectedSite} • {area}</p><div className="mt-5 grid gap-3 md:grid-cols-3"><div className="rounded-2xl bg-white/15 p-4"><p className="text-xs opacity-80">Score</p><p className="text-3xl font-bold">{score}%</p></div><div className="rounded-2xl bg-white/15 p-4"><p className="text-xs opacity-80">Findings</p><p className="text-3xl font-bold">{failingItems.length}</p></div><div className="rounded-2xl bg-white/15 p-4"><p className="text-xs opacity-80">Rating</p><p className="text-xl font-bold">{rating.label}</p></div></div></div><div><h4 className="mb-3 text-lg font-bold">Findings</h4><div className="space-y-3">{failingItems.length === 0 && <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">No findings recorded.</p>}{failingItems.map((finding) => <div key={finding.key} className="rounded-2xl border p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm text-slate-500">{finding.section}</p><p className="font-bold">{finding.question}</p><p className="mt-1 text-sm text-slate-600">{finding.note || "No note added."}</p></div><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Score {finding.value}/3</span></div>{finding.photo && <p className="mt-2 flex items-center gap-2 text-xs font-medium text-emerald-700">📷 Photo evidence attached</p>}</div>)}</div></div></div></div></div>}
+    </div>
+  );
+}
